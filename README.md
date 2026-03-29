@@ -145,13 +145,6 @@ npx nuxi dev --host 0.0.0.0
 ```
 Follow the instructions from the opened .exe to install the telemetry plugin DLLs into your game directory.
 
-> [!NOTE]
-> **Troubleshooting:**
-> If somehow the installation of the telemetry server fails, you can install it manually:
-> 1. Download and the server from the [Funbits Telemetry Server Repo](https://github.com/Funbit/ets2-telemetry-server).
-> 2. Extract the .zip into the root folder of this project.
-> 3. Rename it: `ets2-telemetry-server'.
-
 ## Accessing the App in Your Browser
 To open the app in your browser, click the network link shown in the terminal (the local link may have telemetry fetching issues):
 ```Bash
