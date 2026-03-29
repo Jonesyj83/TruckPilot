@@ -1,0 +1,181 @@
+/**
+ * GENERAL
+ */
+.settings-panel {
+    background-color: $primaryColor;
+    height: 100dvh;
+    width: 100dvw;
+
+    padding-top: 1.8rem;
+    font-weight: 600;
+}
+
+.setting {
+    padding-left: 2rem;
+    padding-right: 2rem;
+    color: $white-font-text;
+
+    font-size: 1.8rem;
+}
+
+.settings-title {
+    padding-left: 2rem;
+    margin-bottom: 1.8rem;
+
+    font-size: 1.4rem;
+
+    display: flex;
+    align-content: center;
+    align-items: center;
+    gap: 1.8rem;
+
+    width: 100%;
+}
+
+.icon-btn {
+    min-width: 26px;
+    min-height: 26px;
+
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.title-icon {
+    min-width: 38px;
+    min-height: 38px;
+
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.panel-title {
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+.panel-description {
+    opacity: 0.7;
+    font-weight: 500;
+}
+
+.separator {
+    height: 2px;
+    width: 100%;
+    background-color: $secondaryColor;
+    border-radius: 3px;
+}
+
+.settings-btn {
+    border-radius: 5px;
+    transition: 0s;
+    font-weight: 600;
+    box-shadow: none;
+    padding: 6px 10px;
+    font-size: 1.6rem;
+
+    &.default-color {
+        background-color: rgba(0, 0, 0, 0.25);
+        box-shadow: $default-box-shadow;
+    }
+}
+
+/**
+ * COLOR SETTINGS
+ */
+.color-box {
+    height: 34px;
+    width: 34px;
+    background-color: var(--theme-color);
+    transition:
+        transform 0.2s,
+        border-color 0.2s;
+
+    border-radius: 3px;
+
+    &.active {
+        border-color: white;
+        transform: scale(1.2);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+}
+
+.option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    margin-top: 3.6rem;
+}
+
+.option-title {
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+}
+
+.color-options {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.change-color-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.color-picker {
+    background-color: $secondaryColor;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+/**
+ * DLC SETTINGS
+ */
+.owned-dlcs {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    @include for-phone {
+        font-size: 1.2rem;
+    }
+}
+
+/**
+ * Metric / Imperial SETTING
+ */
+.segmented-control {
+    display: flex;
+    gap: 0.8rem;
+    background: $default-background-color-dark;
+    padding: 4px;
+    border-radius: 5px;
+
+    .segment-btn {
+        display: flex;
+        justify-content: center;
+        padding: 4px 6px;
+        color: $white-font-text60;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+
+        .label {
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+
+        &.active {
+            background: var(--theme-color);
+            color: $white-font-text;
+            box-shadow: $default-box-shadow;
+        }
+    }
+}

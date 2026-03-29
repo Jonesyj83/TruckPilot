@@ -1,0 +1,38 @@
+{
+    "appId": "com.jonesyj83.truckpilot",
+    "productName": "TruckPilot",
+    "artifactName": "TruckPilot Setup ${version}.${ext}",
+    "executableName": "TruckPilot",
+    "directories": {
+        "buildResources": "resources"
+    },
+    "files": [
+        "assets/**/*",
+        "build/**/*",
+        "!**/*.map",
+        "!build/src/setup.*",
+        "!node_modules/truck-nav{,/**/*}",
+        "!public/debug-roadnetwork/europe-route-graph.geojson"
+    ],
+    "publish": null,
+    "extraResources": [
+        {
+            "from": ".output",
+            "to": "app-output",
+            "filter": ["**/*", "!**/*.map"]
+        }
+    ],
+    "nsis": {
+        "allowElevation": true,
+        "oneClick": false,
+        "allowToChangeInstallationDirectory": true
+    },
+    "win": {
+        "target": "nsis",
+        "icon": "assets/TruckPilotIcon.ico"
+    },
+    "mac": {
+        "category": "your.app.category.type",
+        "target": "dmg"
+    }
+}

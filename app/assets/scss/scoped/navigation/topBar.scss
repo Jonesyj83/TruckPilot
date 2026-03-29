@@ -1,0 +1,359 @@
+.game-information {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: var(--nav-bar-height, #{$game-info-bar-height});
+    color: $white-font-text;
+
+    padding: calc(6px * var(--nav-scale, 1))
+        calc(12px * var(--nav-scale, 1));
+    gap: calc(0.8rem * var(--nav-scale, 1));
+
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid $secondaryColor;
+
+    background-color: $primaryColor;
+
+    &.position-bottom {
+        top: auto;
+        bottom: calc(env(safe-area-inset-bottom) + 6px);
+        border-bottom: 0;
+        border-top: 3px solid $secondaryColor;
+        box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.16);
+    }
+
+    &.is-native {
+        @media (orientation: portrait) {
+            height: calc($game-info-bar-height);
+        }
+    }
+}
+
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: calc(0.7rem * var(--nav-scale, 1));
+    flex: 0 0 auto;
+}
+
+.topbar-center {
+    display: flex;
+    justify-content: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-inline: calc(10px * var(--nav-scale, 1));
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: calc(0.6rem * var(--nav-scale, 1));
+    flex: 0 0 auto;
+    justify-content: flex-end;
+}
+
+.turn-guidance {
+    max-width: min(34vw, calc(360px * var(--nav-scale, 1)));
+    padding: calc(7px * var(--nav-scale, 1))
+        calc(12px * var(--nav-scale, 1));
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+}
+
+.turn-guidance-text {
+    display: block;
+    font-size: calc(0.95rem * var(--nav-scale, 1));
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.speed-readout,
+.status-chip,
+.speed-limit-badge {
+    display: flex;
+    align-items: center;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.speed-readout {
+    gap: calc(0.45rem * var(--nav-scale, 1));
+    padding: calc(7px * var(--nav-scale, 1))
+        calc(12px * var(--nav-scale, 1));
+
+    &.is-over {
+        background: rgba(221, 74, 52, 0.14);
+        border-color: rgba(221, 74, 52, 0.45);
+        color: #ffd4cf;
+    }
+}
+
+.speed-label,
+.limit-label {
+    font-size: calc(0.72rem * var(--nav-scale, 1));
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.72;
+}
+
+.speed-value {
+    font-size: calc(1.55rem * var(--nav-scale, 1));
+    line-height: 1;
+    font-weight: 700;
+}
+
+.speed-unit {
+    font-size: calc(0.9rem * var(--nav-scale, 1));
+    opacity: 0.74;
+    margin-top: 2px;
+}
+
+.speed-limit-badge {
+    gap: calc(0.4rem * var(--nav-scale, 1));
+    padding: calc(7px * var(--nav-scale, 1))
+        calc(12px * var(--nav-scale, 1));
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: $white-font-text;
+
+    &.is-over {
+        background: rgba(221, 74, 52, 0.14);
+        border-color: rgba(221, 74, 52, 0.45);
+        color: #ffd4cf;
+    }
+}
+
+.game-time {
+    font-weight: 700;
+    font-size: calc(1.05rem * var(--nav-scale, 1));
+    min-width: 5rem;
+    margin: 0;
+}
+
+.status-chip {
+    padding: calc(7px * var(--nav-scale, 1))
+        calc(10px * var(--nav-scale, 1));
+}
+
+.fuel-chip {
+    gap: calc(0.6rem * var(--nav-scale, 1));
+}
+
+.fuel-amount {
+    display: flex;
+    gap: calc(0.45rem * var(--nav-scale, 1));
+    font-size: calc(1rem * var(--nav-scale, 1));
+
+    align-items: center;
+    justify-content: center;
+
+    .liters {
+        opacity: 0.6;
+        margin-left: 3px;
+        font-size: 0.95rem;
+    }
+
+    .pulse-red {
+        animation: pulseRed 2.5s infinite ease-in-out;
+    }
+
+    transition: color 0.4s ease;
+
+    @keyframes pulseRed {
+        0% {
+            color: inherit;
+        }
+
+        50% {
+            color: $red-color;
+        }
+
+        100% {
+            color: inherit;
+        }
+    }
+}
+
+.sleep-div {
+    display: flex;
+    gap: calc(0.45rem * var(--nav-scale, 1));
+    font-size: calc(1rem * var(--nav-scale, 1));
+    align-items: center;
+    text-align: center;
+
+    .sleep-icon {
+        font-size: calc(1.5rem * var(--nav-scale, 1));
+
+        transition: color 0.4s ease;
+    }
+
+    .pulse-blue {
+        animation: pulseBlue 2.5s infinite ease-in-out;
+    }
+
+    @keyframes pulseBlue {
+        0% {
+            color: inherit;
+        }
+
+        50% {
+            color: #226ae0;
+        }
+
+        100% {
+            color: inherit;
+        }
+    }
+}
+
+.disconnected-div {
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+    justify-content: center;
+
+    .disconnected-message {
+        font-size: 1.6rem;
+        font-weight: 600;
+    }
+
+    .disconnected-icon {
+        background-color: $red-color;
+        opacity: 0.9;
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.limit-value {
+    font-size: calc(1rem * var(--nav-scale, 1));
+    font-weight: 700;
+    line-height: 1;
+}
+
+.fuel-gauge {
+    display: flex;
+    gap: 3px;
+}
+
+.fuel-segment {
+    width: calc(7px * var(--nav-scale, 1));
+    height: calc(14px * var(--nav-scale, 1));
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+
+    &.active.good {
+        background: #52d273;
+    }
+
+    &.active.warn {
+        background: #f0c24f;
+    }
+
+    &.active.danger {
+        background: #e46b5d;
+    }
+
+    &.is-low.active.good,
+    &.is-low.active.warn,
+    &.is-low.active.danger {
+        background: #e46b5d;
+    }
+}
+
+.signal-chip {
+    gap: calc(0.45rem * var(--nav-scale, 1));
+    padding-inline: calc(12px * var(--nav-scale, 1));
+
+    :deep(.signal-icon) {
+        opacity: 0.35;
+        transition: opacity 0.25s ease, color 0.25s ease;
+        width: calc(18px * var(--nav-scale, 1));
+        height: calc(18px * var(--nav-scale, 1));
+    }
+
+    :deep(.signal-icon.active) {
+        opacity: 1;
+        color: #ffd54f;
+    }
+
+    :deep(.turn-icon.active) {
+        color: #7fd7ff;
+    }
+
+    :deep(.highbeam-icon.active) {
+        color: #ffe082;
+    }
+
+    :deep(.flashing) {
+        animation: indicatorFlash 0.9s ease-in-out infinite;
+    }
+}
+
+@keyframes indicatorFlash {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.55;
+    }
+}
+
+@media (max-width: 800px) {
+    .game-information {
+        padding: 5px 8px;
+        gap: 0.5rem;
+    }
+
+    .topbar-left {
+        gap: 0.4rem;
+    }
+
+    .topbar-center {
+        min-width: 0;
+        padding-inline: 6px;
+    }
+
+    .topbar-right {
+        gap: 0.35rem;
+    }
+
+    .turn-guidance {
+        max-width: min(30vw, 160px);
+    }
+
+    .speed-readout,
+    .speed-limit-badge,
+    .status-chip {
+        padding: 5px 8px;
+    }
+
+    .speed-value {
+        font-size: 1.2rem;
+    }
+
+    .speed-unit,
+    .fuel-amount,
+    .sleep-div,
+    .game-time,
+    .limit-value {
+        font-size: 0.86rem;
+    }
+
+    .speed-label,
+    .limit-label {
+        font-size: 0.55rem;
+    }
+}

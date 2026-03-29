@@ -1,0 +1,84 @@
+//
+//
+//
+// ----------------------> MAP <----------------------
+.map-container {
+    width: 100vw;
+    height: 100dvh;
+
+    background-color: #272d39;
+    touch-action: none;
+}
+
+.map-container * {
+    outline: none !important;
+}
+
+.ui-safe-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+
+    height: calc(100dvh - env(safe-area-inset-top));
+    pointer-events: none;
+    z-index: 10;
+}
+
+.ui-safe-container > * {
+    pointer-events: auto;
+}
+
+.full-page-wrapper {
+    overflow: hidden;
+    position: fixed;
+}
+
+.left-buttons {
+    position: absolute;
+    top: calc(env(safe-area-inset-top) + var(--nav-bar-height, #{$game-info-bar-height}) + 12px);
+    left: 10px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+
+}
+
+.hud-buttons {
+    position: absolute;
+    top: calc(env(safe-area-inset-top) + var(--nav-bar-height, #{$game-info-bar-height}) + 12px);
+    right: 10px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+
+    .red-icon {
+        color: $red-color;
+    }
+
+    .green-icon {
+        color: $green-color;
+    }
+}
+
+.warnings {
+    position: absolute;
+    bottom: 16px;
+    right: 10px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.8rem;
+}
+
+.warnings.nav-bottom {
+    bottom: calc(env(safe-area-inset-bottom) + var(--nav-bar-height, #{$game-info-bar-height}) + 18px);
+}
+
+.map-ui-layer.nav-bottom .left-buttons,
+.map-ui-layer.nav-bottom .hud-buttons {
+    top: calc(env(safe-area-inset-top) + 12px);
+}

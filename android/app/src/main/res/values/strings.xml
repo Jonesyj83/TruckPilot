@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<resources>
+    <string name="app_name">TruckPilot</string>
+    <string name="title_activity_main">truckpilot</string>
+    <string name="package_name">com.jonesyj83.truckpilot</string>
+    <string name="custom_url_scheme">com.jonesyj83.truckpilot</string>
+</resources>

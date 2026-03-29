@@ -1,0 +1,790 @@
+import type { Map as MapLibreGl, StyleSpecification } from "maplibre-gl";
+import { blendWithBg, lightenColor } from "~/assets/utils/shared/colors";
+import { BlobSource } from "~/assets/utils/shared/BlobSource";
+
+const ATS_REAL_COMPANY_ICON_PREFIX = "ats-real-company:";
+const ATS_REAL_ICONS_LOG_PREFIX = "[ATS Real Icons]";
+const ATS_REAL_ICON_LOAD_TIMEOUT_MS = 3000;
+const ATS_REAL_ICON_DEBUG_SAMPLE_LIMIT = 5;
+const ATS_REAL_UNRESOLVED_SPRITE_IDS = new Set([
+    "kw_trk_dlr",
+    "kw_trk_pln",
+    "pio_car_dlr",
+    "wac_air_svc",
+    "ws_trk_pln",
+    "wan_car_dlr",
+    "pt_trk_dlr",
+    "ws_trk_dlr",
+]);
+
+function createAtsCompanyIconExpression(
+    enabled: boolean,
+    loadedOverrideSpriteIds: string[],
+) {
+    if (!enabled || loadedOverrideSpriteIds.length === 0) {
+        return ["get", "sprite"];
+    }
+
+    const matchPairs = loadedOverrideSpriteIds.flatMap((spriteId) => [
+        spriteId,
+        `${ATS_REAL_COMPANY_ICON_PREFIX}${spriteId}`,
+    ]);
+
+    return [
+        "case",
+        ["==", ["get", "poiType"], "company"],
+        ["match", ["get", "sprite"], ...matchPairs, ["get", "sprite"]],
+        ["get", "sprite"],
+    ];
+}
+
+export async function initializeMap(
+    container: HTMLElement,
+): Promise<MapLibreGl> {
+    const { settings, activeSettings } = useSettings();
+
+    console.log(
+        ATS_REAL_ICONS_LOG_PREFIX,
+        "initializeMap",
+        {
+            selectedGame: settings.value.selectedGame,
+            atsSelected: settings.value.selectedGame === "ats",
+            realCompaniesEnabled:
+                !!settings.value.profiles.ats
+                    .enableRealCompaniesGasStationsBillboardsV40117,
+        },
+    );
+
+    const baseUrl = window.location.origin;
+
+    const maplibregl = (await import("maplibre-gl")).default;
+    const { Protocol, PMTiles } = await import("pmtiles");
+
+    const protocol = new Protocol();
+    maplibregl.addProtocol("pmtiles", protocol.tile);
+
+    async function loadPmtiles(fileName: string, key: string) {
+        const url = `${window.location.origin}/data/${settings.value.selectedGame}/map-data/tiles/${fileName}.mp3`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to load ${fileName}`);
+
+            const blob = await response.blob();
+            const pmtilesInstance = new PMTiles(new BlobSource(blob, key));
+            protocol.add(pmtilesInstance);
+
+        } catch (error) {
+            console.error("Error loading PMTiles blob:", error);
+        }
+    }
+
+    await Promise.all([
+        loadPmtiles("roads", "roads"),
+        loadPmtiles("map-data-combined", "all-data"),
+    ]);
+
+    const style: StyleSpecification = {
+        version: 8,
+
+        name: "PMTiles (local)",
+        sources: {
+            [`${settings.value.selectedGame}`]: {
+                type: "vector",
+                url: `pmtiles://roads`,
+            },
+        },
+
+        sprite: `${baseUrl}/sprites/${settings.value.selectedGame}/sprites`,
+        glyphs: `${baseUrl}/fonts/{fontstack}/{range}.pbf`,
+
+        layers: [
+            {
+                id: "background",
+                type: "background",
+                paint: { "background-color": "#272d39" },
+            },
+            {
+                id: "lines",
+                type: "line",
+                source: `${settings.value.selectedGame}`,
+                "source-layer": `${settings.value.selectedGame}`,
+                paint: {
+                    "line-color": "#3d546e",
+                    "line-width": 2,
+                },
+            },
+        ],
+    };
+
+    const gameMap = {
+        ets: {
+            container,
+            style,
+            center: [10, 50],
+            zoom: 6,
+            minZoom: 5,
+            maxZoom: 11.5,
+            maxPitch: 45,
+            fadeDuration: 0,
+            attributionControl: false,
+            collectResourceTiming: false,
+            maxBounds: [
+                [-28, 25], // [[west, south]
+                [50, 74], // [east, north]]
+            ],
+        },
+
+        ats: {
+            container,
+            style,
+            center: [-115, 40],
+            zoom: 6,
+            minZoom: 5,
+            maxZoom: 11.5,
+            maxPitch: 45,
+            fadeDuration: 0,
+            attributionControl: false,
+            collectResourceTiming: false,
+            maxBounds: [
+                [-130, 23], // SW
+                [-60, 55], // NE
+            ],
+        },
+    };
+
+    const selectedMap =
+        settings.value.selectedGame === "ets2" ? gameMap.ets : gameMap.ats;
+    const map = new maplibregl.Map(selectedMap as maplibregl.MapOptions);
+    let pendingAtsCompanyIconRefresh = false;
+
+    const isAtsRealCompaniesEnabled = computed(
+        () =>
+            settings.value.selectedGame === "ats" &&
+            !!settings.value.profiles.ats
+                .enableRealCompaniesGasStationsBillboardsV40117,
+    );
+
+    let atsCompanySpriteIds: string[] | null = null;
+    let atsRealCompanyIconsLoaded = false;
+    let atsLoadedOverrideSpriteIds: string[] = [];
+
+    async function getAtsCompanySpriteIds() {
+        if (atsCompanySpriteIds) {
+            console.log(
+                ATS_REAL_ICONS_LOG_PREFIX,
+                "reusing ATS company sprite ids",
+                {
+                    count: atsCompanySpriteIds.length,
+                },
+            );
+            return atsCompanySpriteIds;
+        }
+
+        const response = await fetch(`${baseUrl}/data/ats/map-data/companies.geojson`);
+
+        if (!response.ok) {
+            throw new Error("Failed to load ATS company data.");
+        }
+
+        const companiesData = await response.json();
+
+        atsCompanySpriteIds = [
+            ...new Set(
+                companiesData.features
+                    .filter(
+                        (feature: any) =>
+                            feature.properties?.poiType === "company" &&
+                            feature.properties?.sprite &&
+                            !ATS_REAL_UNRESOLVED_SPRITE_IDS.has(
+                                String(feature.properties.sprite),
+                            ),
+                    )
+                    .map((feature: any) => String(feature.properties.sprite)),
+            ),
+        ];
+
+        console.log(
+            ATS_REAL_ICONS_LOG_PREFIX,
+            "loaded ATS company sprite ids from companies.geojson",
+            {
+                count: atsCompanySpriteIds.length,
+                sample: atsCompanySpriteIds.slice(0, 10),
+            },
+        );
+
+        return atsCompanySpriteIds;
+    }
+
+    function loadMapImage(url: string): Promise<HTMLImageElement> {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.crossOrigin = "anonymous";
+
+            image.onload = () => {
+                resolve(image);
+            };
+
+            image.onerror = () => {
+                reject(new Error(`Failed to load image: ${url}`));
+            };
+
+            image.src = url;
+        });
+    }
+
+    function loadMapImageWithTimeout(
+        url: string,
+        timeoutMs = ATS_REAL_ICON_LOAD_TIMEOUT_MS,
+    ): Promise<HTMLImageElement> {
+        return new Promise((resolve, reject) => {
+            let settled = false;
+
+            const timeoutId = window.setTimeout(() => {
+                if (settled) return;
+                settled = true;
+                reject(
+                    new Error(
+                        `Timed out loading image after ${timeoutMs}ms: ${url}`,
+                    ),
+                );
+            }, timeoutMs);
+
+            loadMapImage(url)
+                .then((image) => {
+                    if (settled) return;
+                    settled = true;
+                    window.clearTimeout(timeoutId);
+                    resolve(image);
+                })
+                .catch((error) => {
+                    if (settled) return;
+                    settled = true;
+                    window.clearTimeout(timeoutId);
+                    reject(error);
+                });
+        });
+    }
+
+    async function ensureAtsRealCompanyIconsLoaded() {
+        if (atsRealCompanyIconsLoaded) {
+            console.log(
+                ATS_REAL_ICONS_LOG_PREFIX,
+                "reusing previously loaded override icons",
+                {
+                    count: atsLoadedOverrideSpriteIds.length,
+                    sample: atsLoadedOverrideSpriteIds.slice(0, 10),
+                },
+            );
+            return atsLoadedOverrideSpriteIds;
+        }
+
+        const spriteIds = await getAtsCompanySpriteIds();
+        const loadedOverrideSpriteIds: string[] = [];
+
+        for (const [index, spriteId] of spriteIds.entries()) {
+            const imageId = `${ATS_REAL_COMPANY_ICON_PREFIX}${spriteId}`;
+            const imageUrl =
+                `${baseUrl}/images/company-icons/ats-real/${spriteId}.png`;
+            const shouldLogSpriteLoad =
+                index < ATS_REAL_ICON_DEBUG_SAMPLE_LIMIT;
+
+            try {
+                if (shouldLogSpriteLoad) {
+
+                }
+
+                if (!map.hasImage(imageId)) {
+                    const image = await loadMapImageWithTimeout(imageUrl);
+                    map.addImage(imageId, image, { pixelRatio: 2 });
+                }
+
+                if (map.hasImage(imageId)) {
+                    loadedOverrideSpriteIds.push(spriteId);
+
+                }
+            } catch (error) {
+                const didTimeout =
+                    error instanceof Error &&
+                    error.message.includes("Timed out loading image");
+
+                console.warn(
+                    ATS_REAL_ICONS_LOG_PREFIX,
+                    didTimeout
+                        ? "timed out loading override image"
+                        : "failed to load override image",
+                    {
+                        spriteId,
+                        imageId,
+                        url: imageUrl,
+                        index,
+                        error,
+                    },
+                );
+                continue;
+            }
+        }
+
+        atsLoadedOverrideSpriteIds = loadedOverrideSpriteIds;
+        atsRealCompanyIconsLoaded = true;
+
+        console.log(
+            ATS_REAL_ICONS_LOG_PREFIX,
+            "finished loading ATS override icons",
+            {
+                requestedCount: spriteIds.length,
+                loadedCount: atsLoadedOverrideSpriteIds.length,
+                sample: atsLoadedOverrideSpriteIds.slice(0, 10),
+            },
+        );
+
+        return atsLoadedOverrideSpriteIds;
+    }
+
+    async function refreshAtsCompanyIcons() {
+        const allSpritesExists = !!map.getLayer("all-sprites");
+        console.log(
+            ATS_REAL_ICONS_LOG_PREFIX,
+            "refreshAtsCompanyIcons()",
+            {
+                selectedGame: settings.value.selectedGame,
+                atsSelected: settings.value.selectedGame === "ats",
+                realCompaniesEnabled: isAtsRealCompaniesEnabled.value,
+                allSpritesExists,
+                styleLoaded: map.isStyleLoaded(),
+            },
+        );
+
+        if (!allSpritesExists) return;
+        const enabled = isAtsRealCompaniesEnabled.value;
+        let loadedOverrideSpriteIds: string[] = [];
+
+        if (enabled) {
+            loadedOverrideSpriteIds = await ensureAtsRealCompanyIconsLoaded();
+        }
+
+        const iconImageExpression = createAtsCompanyIconExpression(
+            enabled,
+            loadedOverrideSpriteIds,
+        );
+
+        map.setLayoutProperty(
+            "all-sprites",
+            "icon-image",
+            iconImageExpression as any,
+        );
+
+        console.log(
+            ATS_REAL_ICONS_LOG_PREFIX,
+            "applied all-sprites icon-image",
+            {
+                enabled,
+                loadedOverrideCount: loadedOverrideSpriteIds.length,
+                sample: loadedOverrideSpriteIds.slice(0, 10),
+                expression: iconImageExpression,
+            },
+        );
+    }
+
+    async function refreshAtsCompanyIconsWhenReady() {
+        if (!map.isStyleLoaded() || !map.getLayer("all-sprites")) {
+            console.log(
+                ATS_REAL_ICONS_LOG_PREFIX,
+                "refresh deferred until style/layer ready",
+                {
+                    styleLoaded: map.isStyleLoaded(),
+                    allSpritesExists: !!map.getLayer("all-sprites"),
+                },
+            );
+            pendingAtsCompanyIconRefresh = true;
+            return;
+        }
+
+        pendingAtsCompanyIconRefresh = false;
+        await refreshAtsCompanyIcons();
+    }
+
+    const stopAtsRealCompanyIconWatch = watch(
+        isAtsRealCompaniesEnabled,
+        async () => {
+            console.log(
+                ATS_REAL_ICONS_LOG_PREFIX,
+                "ATS real companies watch fired",
+                {
+                    selectedGame: settings.value.selectedGame,
+                    atsSelected: settings.value.selectedGame === "ats",
+                    realCompaniesEnabled: isAtsRealCompaniesEnabled.value,
+                },
+            );
+            try {
+                await refreshAtsCompanyIconsWhenReady();
+            } catch (error) {
+                console.warn(
+                    "Failed to refresh ATS real company icons. Using vanilla sprites.",
+                    error,
+                );
+            }
+        },
+    );
+
+    map.on("remove", () => {
+        stopAtsRealCompanyIconWatch();
+    });
+
+    map.on("error", (e) => {
+        console.error(">>> MAP ERROR EVENT:", e);
+        if (e.error) {
+            console.error("   Message:", e.error.message);
+            console.error("   Stack:", e.error.stack);
+        }
+        // @ts-ignore
+        if (e.sourceId) console.error("  Failing Source:", e.sourceId);
+        // @ts-ignore
+        if (e.tile) console.error("  Failing Tile:", e.tile);
+    });
+
+    //// =================> LATER ATS UPDATE <=================
+
+    map.on("load", async () => {
+        console.log(ATS_REAL_ICONS_LOG_PREFIX, "map load event");
+
+        map.addSource("all-data", {
+            type: "vector",
+            url: "pmtiles://all-data",
+        });
+
+        ////
+        //// LAYERS FOR DISPLAYING
+        //// FROM SOURCES
+        ////
+        // OUTLINE
+        map.addLayer({
+            id: "water-outline",
+            type: "line",
+            source: "all-data",
+            "source-layer": "water",
+            paint: {
+                "line-color": "#1e3a5f",
+                "line-width": [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    5,
+                    7,
+                    10,
+                    4,
+                ],
+                "line-opacity": 0.6,
+            },
+        });
+
+        // WATER
+        map.addLayer({
+            id: "water",
+            type: "fill",
+            source: "all-data",
+            "source-layer": "water",
+            paint: {
+                "fill-color": "#24467b",
+                "fill-opacity": 0.6,
+            },
+        });
+
+        // THICK ROADS
+        map.addLayer({
+            id: "roads",
+            type: "line",
+            source: `${settings.value.selectedGame}`,
+            "source-layer": `${settings.value.selectedGame}`,
+            layout: {
+                "line-join": ["step", ["zoom"], "miter", 8, "round"],
+                "line-cap": ["step", ["zoom"], "butt", 8, "round"],
+            },
+            paint: {
+                "line-color": "#4a5f7a",
+                "line-width": [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    5,
+                    0.5,
+                    9,
+                    2,
+                    10,
+                    6,
+                ],
+                "line-opacity": 1,
+            },
+        });
+
+        // POLYGONS FOR PARKING ETC
+        map.addLayer(
+            {
+                id: "maparea-zones",
+                type: "fill",
+                source: "all-data",
+                "source-layer": "mapareas",
+                paint: {
+                    "fill-color": [
+                        "match",
+                        ["get", "color"],
+                        0,
+                        "#3d546e",
+                        1,
+                        "#4a5f7a",
+                        2,
+                        "#556b7f",
+                        3,
+                        "#6b7f93",
+                        4,
+                        "#7d93a7",
+                        "#3d546e",
+                    ],
+                    "fill-opacity": 0.5,
+                },
+            },
+            "lines",
+        );
+
+        // PREFABS FOR SERVICE AREAS     ETC
+
+        const color0 = blendWithBg(
+            lightenColor(activeSettings.value.themeColor, 0.3),
+            0.6,
+        );
+        const color1 = blendWithBg(
+            lightenColor(activeSettings.value.themeColor, 0),
+            0.6,
+        );
+        map.addLayer(
+            {
+                id: "prefab-zones",
+                type: "fill",
+                source: "all-data",
+                "source-layer": "prefabs",
+                paint: {
+                    "fill-color": [
+                        "match",
+                        ["get", "color"],
+                        0,
+                        color0,
+                        1,
+                        color0,
+                        2,
+                        color1,
+                        3,
+                        color0,
+                        "#3d546e",
+                    ],
+                },
+                minzoom: 5,
+            },
+            "lines",
+        );
+
+        // DISPLAYING VILLAGE NAMES
+        map.addLayer({
+            id: "village-labels",
+            type: "symbol",
+            source: "all-data",
+            "source-layer": "ets2villages",
+            layout: {
+                "text-field": ["get", "name"],
+                "text-font": ["Quicksand regular"],
+                "text-size": 13,
+                "text-anchor": "center",
+                "text-offset": [0, 0],
+                "text-allow-overlap": true,
+                "text-ignore-placement": true,
+            },
+            paint: {
+                "text-color": "#ffffff",
+            },
+            minzoom: 8.2,
+        });
+
+        // DISPLAYING COUNTRY DELIMITATIONS
+        map.addLayer(
+            {
+                id: "country-borders",
+                type: "line",
+                source: "all-data",
+                "source-layer": "countries",
+                paint: {
+                    "line-color": "#3d546e",
+                    "line-width": 2,
+                    "line-opacity": 0.4,
+                },
+            },
+            "lines",
+        );
+
+        // DISPLAYING STATE DELIMITATIONS
+        map.addLayer(
+            {
+                id: "state-borders",
+                type: "line",
+                source: "all-data",
+                "source-layer": "states",
+                paint: {
+                    "line-color": "#3d546e",
+                    "line-width": 2,
+                    "line-opacity": 0.4,
+                },
+            },
+            "lines",
+        );
+
+        // ALL SPRITE SHEETS
+        map.addLayer({
+            id: "all-sprites",
+            type: "symbol",
+            source: "all-data",
+            "source-layer": "spritelocations",
+            filter: ["!=", ["get", "poiType"], "road"],
+            minzoom: 8,
+            layout: {
+                "icon-image": ["get", "sprite"],
+                "icon-size": [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    7,
+                    0.7,
+                    10,
+                    1.5,
+                ],
+                "icon-allow-overlap": false,
+                "symbol-sort-key": [
+                    "match",
+                    ["get", "sprite"],
+                    "gas_ico",
+                    1,
+                    "service_ico",
+                    2,
+                    10,
+                ],
+                "symbol-placement": "point",
+            },
+        });
+
+        // ROAD POI TYPE
+        map.addLayer({
+            id: "road-sprites",
+            type: "symbol",
+            source: "all-data",
+            "source-layer": "spritelocations",
+            filter: ["==", ["get", "poiType"], "road"],
+            minzoom: 8,
+            layout: {
+                "icon-image": ["get", "sprite"],
+                "icon-size": [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    7,
+                    0.6,
+                    10,
+                    0.9,
+                ],
+                "icon-allow-overlap": true,
+                "symbol-placement": "point",
+            },
+        });
+
+        // DISPLAYING CITY NAMES
+        map.addLayer({
+            id: "city-labels",
+            type: "symbol",
+            source: "all-data",
+            "source-layer": "cities",
+            filter: ["!=", ["get", "capital"], 2],
+            layout: {
+                "text-field": ["get", "name"],
+                "text-font": ["Quicksand Regular"],
+                "text-size": 15,
+                "text-anchor": "bottom",
+                "text-offset": [0, -0.3],
+                "text-allow-overlap": true,
+                "text-ignore-placement": true,
+            },
+            paint: {
+                "text-color": "#ffffff",
+
+                "text-halo-color": "#ffffff",
+                "text-halo-width": 0.3,
+            },
+            minzoom: 6,
+            maxzoom: 8,
+        });
+
+        // DISPLAYING CAPITAL NAMES
+        map.addLayer({
+            id: "capital-major-labels",
+            type: "symbol",
+            filter: ["==", ["get", "capital"], 2],
+            source: "all-data",
+            "source-layer": "cities",
+            layout: {
+                "text-field": ["get", "name"],
+                "text-size": 18,
+                "text-font": ["Quicksand Regular"],
+                "text-anchor": "bottom",
+                "text-offset": [0, -0.3],
+                "text-allow-overlap": true,
+                "text-ignore-placement": true,
+            },
+            paint: {
+                "text-color": "#ffffff",
+                "text-halo-color": "#ffffff",
+                "text-halo-width": 0.5,
+            },
+
+            minzoom: 6,
+            maxzoom: 8,
+        });
+
+        // DISPLAYING COUNTRY NAMES
+        map.addLayer({
+            id: "country-labels",
+            type: "symbol",
+            source: "all-data",
+            "source-layer": "countrynames",
+            layout: {
+                "text-field": ["get", "name"],
+                "text-size": 20,
+                "text-font": ["Quicksand Regular"],
+                "text-anchor": "bottom",
+                "text-offset": [0, -0.3],
+                "text-allow-overlap": true,
+                "text-ignore-placement": true,
+            },
+            paint: {
+                "text-color": "#ffffff",
+                "text-halo-color": "#ffffff",
+                "text-halo-width": 0.5,
+                "text-opacity": 0.5,
+            },
+            minzoom: 5,
+            maxzoom: 6,
+        });
+
+        try {
+            await refreshAtsCompanyIcons();
+            if (pendingAtsCompanyIconRefresh) {
+                console.log(
+                    ATS_REAL_ICONS_LOG_PREFIX,
+                    "running deferred ATS real icon refresh",
+                );
+                await refreshAtsCompanyIcons();
+            }
+        } catch (error) {
+            console.warn(
+                "Failed to initialize ATS real company icons. Using vanilla sprites.",
+                error,
+            );
+        }
+    });
+
+    return map;
+}

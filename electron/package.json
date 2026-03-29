@@ -1,0 +1,36 @@
+{
+    "name": "truckpilot",
+    "productName": "TruckPilot",
+    "version": "0.1.0",
+    "description": "Real-time GPS navigation route advisor for ATS. Second monitor map with live tracking and routing.",
+    "author": {
+        "name": "JonesyJ83",
+        "email": "jonesyj83@gmail.com"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/JonesyJ83/TruckPilot"
+    },
+    "license": "MIT",
+    "main": "build/src/index.js",
+    "scripts": {
+        "build": "tsc",
+        "electron:start": "npm run build && electron --inspect=5858 ./",
+        "electron:pack": "npm run build && electron-builder build --dir -c ./electron-builder.config.json",
+        "electron:make": "npm run build && electron-builder build -c ./electron-builder.config.json"
+    },
+    "dependencies": {
+        "electron-unhandled": "~4.0.1",
+		"tslib": "~2.6.2"
+    },
+    "devDependencies": {
+        "@types/node": "^25.0.3",
+        "electron": "^39.2.7",
+        "electron-builder": "^26.0.12",
+        "typescript": "^5.0.4"
+    },
+    "keywords": [
+        "capacitor",
+        "electron"
+    ]
+}

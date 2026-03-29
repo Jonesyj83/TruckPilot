@@ -1,0 +1,63 @@
+{
+    "name": "truckpilot",
+    "type": "module",
+    "private": true,
+    "version": "0.1.0",
+    "scripts": {
+        "preinstall": "npx npm-force-resolutions",
+        "build": "nuxt build",
+        "dev": "nuxt dev",
+        "generate": "nuxt generate",
+        "preview": "nuxt preview",
+        "postinstall": "patch-package && nuxt prepare",
+        "electron:install-deps": "npm --prefix electron install",
+        "electron:sync-output": "node electron/scripts/sync-output.mjs",
+        "electron:build:main": "npm run electron:install-deps && tsc -p electron/tsconfig.json",
+        "electron:build": "npm run build && npm run electron:sync-output && npm run electron:build:main",
+        "electron:run": "npm run electron:build && electron electron",
+        "electron:run:devurl": "npm run electron:build:main && electron electron",
+        "electron:dev": "npm run electron:install-deps && node electron/scripts/dev.mjs",
+        "electron:package": "npm run electron:build && npm --prefix electron exec electron-builder -- --projectDir electron --config electron-builder.config.json --dir",
+        "electron:installer:win": "npm run electron:build && npm --prefix electron exec electron-builder -- --projectDir electron --config electron-builder.config.json --win nsis",
+        "android:sync": "npx nuxi generate && npx cap sync android && npx cap run android --target=52f73682434f"
+    },
+    "dependencies": {
+        "@capacitor-community/electron": "^5.0.1",
+        "@capacitor-community/keep-awake": "^8.0.0",
+        "@capacitor-community/safe-area": "^8.0.1",
+        "@capacitor/android": "^8.1.0",
+        "@capacitor/cli": "^8.1.0",
+        "@capacitor/core": "^8.1.0",
+        "@capacitor/ios": "^8.0.0",
+        "@nuxt/devtools": "^3.2.1",
+        "@nuxt/icon": "^2.1.0",
+        "@nuxt/ui": "^4.4.0",
+        "@turf/turf": "^7.3.1",
+        "eruda": "^3.4.3",
+        "maplibre-gl": "^5.14.0",
+        "nuxt": "^4.3.1",
+        "nuxt-color-picker": "^1.2.8",
+        "pmtiles": "^4.3.0",
+        "proj4": "^2.20.2",
+        "rbush": "^4.0.1",
+        "tailwindcss": "^4.2.0",
+        "vue": "^3.5.24",
+        "vue-router": "^4.6.4"
+    },
+    "devDependencies": {
+        "@types/electron": "^1.4.38",
+        "@types/node": "^25.2.3",
+        "@types/rbush": "^4.0.0",
+        "electron": "^39.2.7",
+        "npm-force-resolutions": "^0.0.10",
+        "patch-package": "^8.0.1",
+        "sass-embedded": "^1.96.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.9.3"
+    },
+    "resolutions": {
+        "glob": "11.0.5",
+        "tar": "7.5.8",
+        "pmtiles": "4.3.0"
+    }
+}
