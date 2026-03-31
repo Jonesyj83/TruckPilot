@@ -1,6 +1,6 @@
 # 🚛 TruckPilot
 
-**TruckPilot** is an external **navigation + dashboard system** for American Truck Simulator (not tested on ETS2 as I don't own it but it should work fine) and American Truck Simulator built using Typescript. It runs in the browser (perfect for a second monitor, tablet or phone) or standalone app and provides real-time tracking, routing, and live truck data based on the in-game map.
+**TruckPilot** is an external **navigation + dashboard system** for American Truck Simulator (not tested on ETS2 as I don't own it but it should work fine) built using Typescript. It runs in the browser (perfect for a second monitor, tablet or phone) or standalone app and provides real-time tracking, routing, and live truck data based on the in-game map.
 <img width="1919" height="1077" alt="Screenshot 2026-03-29 121933" src="https://github.com/user-attachments/assets/4d24e206-676d-457d-ac94-2caabd9db43e" />
 <a href="https://www.buymeacoffee.com/Jonesy" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 ---
