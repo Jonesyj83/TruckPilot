@@ -7,7 +7,7 @@ const PADDING_FREE = { top: 0, bottom: 0, left: 0, right: 0 };
 const NAV_ZOOM = 11;
 const NAV_PITCH = 38;
 const CAMERA_BEARING_FOLLOW_MS = 40;
-const MANUAL_INTERACTION_COOLDOWN_MS = 300000;
+const MANUAL_INTERACTION_COOLDOWN_MS = 3000;
 
 export const useMapCamera = (map: Ref<Map | null>) => {
     const isCameraLocked = ref(false);
