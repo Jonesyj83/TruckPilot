@@ -8,16 +8,7 @@ const props = defineProps<{ closePanel: () => void }>();
 
 const isDlcPanelOpened = ref(false);
 const isMetric = computed(() => activeSettings.value.units === "metric");
-const isNavBarAtTop = computed(
-    () => activeSettings.value.navBarPosition !== "bottom",
-);
 const navBarSize = computed(() => activeSettings.value.navBarSize);
-const routeGuidanceHorizontal = computed(
-    () => activeSettings.value.routeGuidanceHorizontal,
-);
-const routeGuidanceVertical = computed(
-    () => activeSettings.value.routeGuidanceVertical,
-);
 const isRealCompaniesEnabled = computed(
     () =>
         !!activeSettings.value
@@ -38,22 +29,10 @@ function toggleUnits() {
     updateProfile("units", isMetric.value ? "imperial" : "metric");
 }
 
-function toggleNavBarPosition() {
-    updateProfile("navBarPosition", isNavBarAtTop.value ? "bottom" : "top");
-}
-
 function setNavBarSize(
     size: "default" | "large" | "xlarge" | "xxlarge",
 ) {
     updateProfile("navBarSize", size);
-}
-
-function setRouteGuidanceHorizontal(value: "left" | "right") {
-    updateProfile("routeGuidanceHorizontal", value);
-}
-
-function setRouteGuidanceVertical(value: "top" | "middle" | "bottom") {
-    updateProfile("routeGuidanceVertical", value);
 }
 
 function toggleRealCompaniesSupport() {
@@ -131,25 +110,6 @@ function toggleRealCompaniesSupport() {
 
         <div class="option setting">
             <div class="option-title">
-                <Icon name="lucide:panel-top" size="24" />
-                <p>Nav Bar Position</p>
-            </div>
-            <div class="segmented-control" @click="toggleNavBarPosition">
-                <button class="segment-btn" :class="{ active: isNavBarAtTop }">
-                    <span class="label">Top</span>
-                </button>
-
-                <button
-                    class="segment-btn"
-                    :class="{ active: !isNavBarAtTop }"
-                >
-                    <span class="label">Bottom</span>
-                </button>
-            </div>
-        </div>
-
-        <div class="option setting">
-            <div class="option-title">
                 <Icon name="lucide:zoom-in" size="24" />
                 <p>Nav Bar Size</p>
             </div>
@@ -181,59 +141,6 @@ function toggleRealCompaniesSupport() {
                     @click="setNavBarSize('xxlarge')"
                 >
                     <span class="label">XXL</span>
-                </button>
-            </div>
-        </div>
-
-        <div class="option setting">
-            <div class="option-title">
-                <Icon name="lucide:move-horizontal" size="24" />
-                <p>Dashboard Side</p>
-            </div>
-            <div class="segmented-control">
-                <button
-                    class="segment-btn"
-                    :class="{ active: routeGuidanceHorizontal === 'left' }"
-                    @click="setRouteGuidanceHorizontal('left')"
-                >
-                    <span class="label">Left</span>
-                </button>
-                <button
-                    class="segment-btn"
-                    :class="{ active: routeGuidanceHorizontal === 'right' }"
-                    @click="setRouteGuidanceHorizontal('right')"
-                >
-                    <span class="label">Right</span>
-                </button>
-            </div>
-        </div>
-
-        <div class="option setting">
-            <div class="option-title">
-                <Icon name="lucide:move-vertical" size="24" />
-                <p>Dashboard Position</p>
-            </div>
-            <div class="segmented-control segmented-control-3">
-                <button
-                    class="segment-btn"
-                    :class="{ active: routeGuidanceVertical === 'top' }"
-                    @click="setRouteGuidanceVertical('top')"
-                >
-                    <span class="label">Top</span>
-                </button>
-                <button
-                    class="segment-btn"
-                    :class="{ active: routeGuidanceVertical === 'middle' }"
-                    @click="setRouteGuidanceVertical('middle')"
-                >
-                    <span class="label">Middle</span>
-                </button>
-                <button
-                    class="segment-btn"
-                    :class="{ active: routeGuidanceVertical === 'bottom' }"
-                    @click="setRouteGuidanceVertical('bottom')"
-                >
-                    <span class="label">Bottom</span>
                 </button>
             </div>
         </div>

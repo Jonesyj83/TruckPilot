@@ -43,17 +43,6 @@ export async function initializeMap(
 ): Promise<MapLibreGl> {
     const { settings, activeSettings } = useSettings();
 
-    console.log(
-        ATS_REAL_ICONS_LOG_PREFIX,
-        "initializeMap",
-        {
-            selectedGame: settings.value.selectedGame,
-            atsSelected: settings.value.selectedGame === "ats",
-            realCompaniesEnabled:
-                !!settings.value.profiles.ats
-                    .enableRealCompaniesGasStationsBillboardsV40117,
-        },
-    );
 
     const baseUrl = window.location.origin;
 
@@ -171,13 +160,6 @@ export async function initializeMap(
 
     async function getAtsCompanySpriteIds() {
         if (atsCompanySpriteIds) {
-            console.log(
-                ATS_REAL_ICONS_LOG_PREFIX,
-                "reusing ATS company sprite ids",
-                {
-                    count: atsCompanySpriteIds.length,
-                },
-            );
             return atsCompanySpriteIds;
         }
 
@@ -203,15 +185,6 @@ export async function initializeMap(
                     .map((feature: any) => String(feature.properties.sprite)),
             ),
         ];
-
-        console.log(
-            ATS_REAL_ICONS_LOG_PREFIX,
-            "loaded ATS company sprite ids from companies.geojson",
-            {
-                count: atsCompanySpriteIds.length,
-                sample: atsCompanySpriteIds.slice(0, 10),
-            },
-        );
 
         return atsCompanySpriteIds;
     }
@@ -268,14 +241,6 @@ export async function initializeMap(
 
     async function ensureAtsRealCompanyIconsLoaded() {
         if (atsRealCompanyIconsLoaded) {
-            console.log(
-                ATS_REAL_ICONS_LOG_PREFIX,
-                "reusing previously loaded override icons",
-                {
-                    count: atsLoadedOverrideSpriteIds.length,
-                    sample: atsLoadedOverrideSpriteIds.slice(0, 10),
-                },
-            );
             return atsLoadedOverrideSpriteIds;
         }
 
@@ -328,32 +293,11 @@ export async function initializeMap(
         atsLoadedOverrideSpriteIds = loadedOverrideSpriteIds;
         atsRealCompanyIconsLoaded = true;
 
-        console.log(
-            ATS_REAL_ICONS_LOG_PREFIX,
-            "finished loading ATS override icons",
-            {
-                requestedCount: spriteIds.length,
-                loadedCount: atsLoadedOverrideSpriteIds.length,
-                sample: atsLoadedOverrideSpriteIds.slice(0, 10),
-            },
-        );
-
         return atsLoadedOverrideSpriteIds;
     }
 
     async function refreshAtsCompanyIcons() {
         const allSpritesExists = !!map.getLayer("all-sprites");
-        console.log(
-            ATS_REAL_ICONS_LOG_PREFIX,
-            "refreshAtsCompanyIcons()",
-            {
-                selectedGame: settings.value.selectedGame,
-                atsSelected: settings.value.selectedGame === "ats",
-                realCompaniesEnabled: isAtsRealCompaniesEnabled.value,
-                allSpritesExists,
-                styleLoaded: map.isStyleLoaded(),
-            },
-        );
 
         if (!allSpritesExists) return;
         const enabled = isAtsRealCompaniesEnabled.value;
@@ -373,29 +317,10 @@ export async function initializeMap(
             "icon-image",
             iconImageExpression as any,
         );
-
-        console.log(
-            ATS_REAL_ICONS_LOG_PREFIX,
-            "applied all-sprites icon-image",
-            {
-                enabled,
-                loadedOverrideCount: loadedOverrideSpriteIds.length,
-                sample: loadedOverrideSpriteIds.slice(0, 10),
-                expression: iconImageExpression,
-            },
-        );
     }
 
     async function refreshAtsCompanyIconsWhenReady() {
         if (!map.isStyleLoaded() || !map.getLayer("all-sprites")) {
-            console.log(
-                ATS_REAL_ICONS_LOG_PREFIX,
-                "refresh deferred until style/layer ready",
-                {
-                    styleLoaded: map.isStyleLoaded(),
-                    allSpritesExists: !!map.getLayer("all-sprites"),
-                },
-            );
             pendingAtsCompanyIconRefresh = true;
             return;
         }
@@ -407,15 +332,6 @@ export async function initializeMap(
     const stopAtsRealCompanyIconWatch = watch(
         isAtsRealCompaniesEnabled,
         async () => {
-            console.log(
-                ATS_REAL_ICONS_LOG_PREFIX,
-                "ATS real companies watch fired",
-                {
-                    selectedGame: settings.value.selectedGame,
-                    atsSelected: settings.value.selectedGame === "ats",
-                    realCompaniesEnabled: isAtsRealCompaniesEnabled.value,
-                },
-            );
             try {
                 await refreshAtsCompanyIconsWhenReady();
             } catch (error) {
@@ -446,7 +362,6 @@ export async function initializeMap(
     //// =================> LATER ATS UPDATE <=================
 
     map.on("load", async () => {
-        console.log(ATS_REAL_ICONS_LOG_PREFIX, "map load event");
 
         map.addSource("all-data", {
             type: "vector",
@@ -772,10 +687,6 @@ export async function initializeMap(
         try {
             await refreshAtsCompanyIcons();
             if (pendingAtsCompanyIconRefresh) {
-                console.log(
-                    ATS_REAL_ICONS_LOG_PREFIX,
-                    "running deferred ATS real icon refresh",
-                );
                 await refreshAtsCompanyIcons();
             }
         } catch (error) {

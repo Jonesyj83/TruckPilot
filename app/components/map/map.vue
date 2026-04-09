@@ -32,6 +32,7 @@ const {
     startTelemetry,
     stopTelemetry,
     gameTime,
+    timeScale,
     gameConnected,
     truckCoords,
     truckSpeed,
@@ -72,6 +73,16 @@ const { loadLocationData, findDestinationCoords } = useCityData();
 //
 // Check Platform
 const { isElectron, isMobile, isWeb } = usePlatform();
+const DASHBOARD_NARROW_VIEWPORT_MAX = 800;
+const hasDashboardVisibilityOverride = ref(false);
+
+const isNarrowDashboardViewport = () =>
+    typeof window !== "undefined" &&
+    window.matchMedia(
+        `(max-width: ${DASHBOARD_NARROW_VIEWPORT_MAX}px)`,
+    ).matches;
+
+const isDashboardVisible = ref(!isNarrowDashboardViewport());
 
 //
 //
@@ -91,6 +102,7 @@ const {
 const {
     isCameraLocked,
     isNavigating,
+    isManualInteractionCooldownActive,
     initCameraListeners,
     followTruck,
     setNavigationActive,
@@ -125,7 +137,7 @@ const {
 //
 //
 // Settings Controller
-const { activeSettings } = useSettings();
+const { activeSettings, updateProfile } = useSettings();
 const isTruckMoving = computed(() => truckSpeed.value > 1);
 const isCustomRouteOverride = ref(false);
 const showResetRoute = computed(
@@ -219,7 +231,7 @@ watch(
         if (!isLoading && isWorkerReady && isGameConnected && !hasJob) {
             const destination = activeSettings.value.lastDestination;
 
-            if (destination && truckCoords.value) {
+            if (destination && truckCoords.value && isClickingEnabled.value) {
                 clearRouteState();
                 isCustomRouteOverride.value = true;
 
@@ -238,10 +250,8 @@ watch(
 watch(
     () => activeSettings.value.themeColor,
     async (newColor) => {
-        if (!map.value) return;
 
-        const newTruckImg = await generateTruckIcon(newColor);
-        updateMarkerImage(newTruckImg.src);
+        if (!map.value) return;
 
         if (map.value.getLayer("prefab-zones")) {
             const blended = blendWithBg(lightenColor(newColor, 0.3), 0.6);
@@ -313,6 +323,9 @@ watch(
 
 onMounted(async () => {
     // eruda.init(); // KEEP FOR DEBUGGING MOBILE
+    window.addEventListener("resize", syncDashboardVisibilityForViewport);
+    syncDashboardVisibilityForViewport();
+
     await loadLocationData();
     if (!mapEl.value) return;
     if (isElectron.value) {
@@ -323,7 +336,6 @@ onMounted(async () => {
         const mapInstance = await initializeMap(mapEl.value);
         map.value = markRaw(mapInstance);
         if (!map.value) return;
-
         const initialTruckImg = await generateTruckIcon(
             activeSettings.value.themeColor,
         );
@@ -344,9 +356,6 @@ onMounted(async () => {
             });
             if (features.length > 0) return;
 
-            console.log(
-                ` ${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`,
-            ); // KEEP FOR DEBUGGING BUGGED AREAS
             if (!isClickingEnabled.value) return;
             if (!gameConnected.value) return;
             if (!truckCoords.value) return;
@@ -369,6 +378,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+    window.removeEventListener("resize", syncDashboardVisibilityForViewport);
     stopTelemetry();
     destroyWorker();
 
@@ -391,7 +401,12 @@ function onTelemetryUpdate() {
 
     followTruck(snappedCoords, truckHeading.value);
 
-    if (isRouteActive.value && isTruckMoving.value && !isCameraLocked.value) {
+    if (
+        isRouteActive.value &&
+        isTruckMoving.value &&
+        !isCameraLocked.value &&
+        !isManualInteractionCooldownActive.value
+    ) {
         startNavigationMode(snappedCoords, truckHeading.value);
     }
 
@@ -402,6 +417,10 @@ function onTelemetryUpdate() {
 
 function toggleEnableClicking() {
     isClickingEnabled.value = !isClickingEnabled.value;
+
+    if (!isClickingEnabled.value) {
+        updateProfile("lastDestination", null);
+    }
 
     clickingNotificationTrigger.value++;
 }
@@ -466,6 +485,16 @@ const onToggleFullscreen = async () => {
 const toggleSettingsPanel = () => {
     isSettingsPanelOpened.value = !isSettingsPanelOpened.value;
 };
+
+const syncDashboardVisibilityForViewport = () => {
+    if (hasDashboardVisibilityOverride.value) return;
+    isDashboardVisible.value = !isNarrowDashboardViewport();
+};
+
+const toggleDashboardPanel = () => {
+    hasDashboardVisibilityOverride.value = true;
+    isDashboardVisible.value = !isDashboardVisible.value;
+};
 </script>
 
 <template>
@@ -477,11 +506,16 @@ const toggleSettingsPanel = () => {
         <div ref="mapEl" class="map-container"></div>
 
         <div class="ui-safe-container">
+            <div
+                v-show="isCameraLocked"
+                class="center-truck-arrow"
+                aria-hidden="true"
+            ></div>
+
             <Transition name="ui-layer-fade">
                 <div
                     v-show="!isSettingsPanelOpened"
                     class="map-ui-layer"
-                    :class="{ 'nav-bottom': activeSettings.navBarPosition === 'bottom' }"
                     :style="navBarLayoutVars"
                 >
                     <Transition name="fade">
@@ -493,12 +527,16 @@ const toggleSettingsPanel = () => {
                         :fuel-capacity="fuelCapacity"
                         :game-connected="gameConnected"
                         :game-time="gameTime"
+                        :time-scale="timeScale"
+                        :route-eta="routeEta"
+                        :route-distance="routeDistance"
+                        :estimated-game-minutes="estimatedGameMinutes"
+                        :estimated-distance-km="estimatedDistanceKm"
                         :rest-stop-minutes="restStopMinutes"
                         :rest-stop-time="restStoptime"
                         :speed-limit="speedLimit"
                         :truck-speed="truckSpeed"
                         :is-web="isWeb"
-                        :position="activeSettings.navBarPosition"
                         :blinker-left-active="blinkerLeftActive"
                         :blinker-right-active="blinkerRightActive"
                         :headlights-on="headlightsOn"
@@ -515,6 +553,10 @@ const toggleSettingsPanel = () => {
                         <HudButton
                             icon-name="flowbite:cog-outline"
                             :onClick="toggleSettingsPanel"
+                        />
+                        <HudButton
+                            icon-name="tabler:gauge"
+                            :onClick="toggleDashboardPanel"
                         />
                     </div>
 
@@ -565,10 +607,7 @@ const toggleSettingsPanel = () => {
                         />
                     </div>
 
-                    <div
-                        class="warnings"
-                        :class="{ 'nav-bottom': activeSettings.navBarPosition === 'bottom' }"
-                    >
+                    <div class="warnings">
                         <WarningSlide
                             :show-if="hasInGameMarker && !isRouteActive"
                             :reset-on="isRouteActive"
@@ -583,15 +622,11 @@ const toggleSettingsPanel = () => {
                     </div>
 
                     <DashboardPanel
+                        v-show="isDashboardVisible"
                         :game-connected="gameConnected"
                         :is-route-active="isRouteActive"
                         :has-active-job="hasActiveJob"
                         :destination-name="destinationName"
-                        :route-distance="routeDistance"
-                        :route-eta="routeEta"
-                        :estimated-game-minutes="estimatedGameMinutes"
-                        :estimated-distance-km="estimatedDistanceKm"
-                        :rest-stop-minutes="restStopMinutes"
                         :fuel="fuel"
                         :fuel-capacity="fuelCapacity"
                         :truck-make="truckMake"
@@ -608,13 +643,6 @@ const toggleSettingsPanel = () => {
                         :reward="income"
                         :show-reset-route="showResetRoute"
                         :reset-route="resetAppRoute"
-                        :nav-bar-position="activeSettings.navBarPosition"
-                        :dashboard-horizontal="
-                            activeSettings.routeGuidanceHorizontal
-                        "
-                        :dashboard-vertical="
-                            activeSettings.routeGuidanceVertical
-                        "
                     />
                 </div>
             </Transition>

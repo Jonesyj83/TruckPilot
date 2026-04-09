@@ -9,6 +9,7 @@ export interface GameState {
     gameTime: string;
     gameConnected: boolean;
     hasInGameMarker: boolean;
+    timeScale: number;
 }
 
 export interface TruckState {

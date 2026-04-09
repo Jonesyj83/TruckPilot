@@ -25,7 +25,7 @@ export const useRouteController = (
 ) => {
     const MAX_NEXT_TURN_LOOKAHEAD_KM = 2;
     const MANEUVER_ANGLE_THRESHOLD = 35;
-    const MANEUVER_WINDOW_KM = 0.08;
+    const MANEUVER_WINDOW_KM = 0.15;
     const ROUTE_PROGRESS_WINDOW_BACK = 12;
     const ROUTE_PROGRESS_WINDOW_FORWARD = 35;
     const ROUTE_GUIDANCE_DEBUG_PREFIX = "[Route Guidance Debug]";
@@ -393,7 +393,7 @@ export const useRouteController = (
                     vertexIndex,
                 );
                 const displayDivisor =
-                    settings.value.selectedGame === "ets2" ? 20 : 19;
+                    settings.value.selectedGame === "ets2" ? 20 : 7;
                 const displayedDistanceKm = distanceKm / displayDivisor;
                 const finalInstruction =
                     distanceKm > MAX_NEXT_TURN_LOOKAHEAD_KM

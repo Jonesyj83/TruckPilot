@@ -39,6 +39,7 @@ const gameState = reactive<GameState>({
     gameTime: "",
     gameConnected: false,
     hasInGameMarker: false,
+    timeScale: 0,
 });
 
 const navigationState = reactive<NavigationState>({
@@ -414,6 +415,7 @@ export function useEtsTelemetry() {
             gameTime: gameTime,
             gameConnected: gameConnected,
             hasInGameMarker: hasInGameMarker,
+            timeScale: data.game.timeScale,
         });
 
         const {
@@ -499,6 +501,7 @@ export function useEtsTelemetry() {
             gameConnected: false,
             hasInGameMarker: false,
             gameTime: "",
+            timeScale: 0,
         });
 
         Object.assign(truckState, {

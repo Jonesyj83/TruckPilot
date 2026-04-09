@@ -29,9 +29,15 @@
     pointer-events: auto;
 }
 
+
 .full-page-wrapper {
     overflow: hidden;
     position: fixed;
+}
+
+.map-ui-layer {
+    --dashboard-left-clearance: 88px;
+    --dashboard-right-clearance: 78px;
 }
 
 .left-buttons {
@@ -81,4 +87,11 @@
 .map-ui-layer.nav-bottom .left-buttons,
 .map-ui-layer.nav-bottom .hud-buttons {
     top: calc(env(safe-area-inset-top) + 12px);
+}
+
+@media (max-width: 800px) {
+    .map-ui-layer {
+        --dashboard-left-clearance: 60px;
+        --dashboard-right-clearance: 60px;
+    }
 }

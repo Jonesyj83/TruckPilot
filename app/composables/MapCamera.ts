@@ -1,4 +1,4 @@
-import { ref, onUnmounted } from "vue";
+import { ref, onUnmounted, readonly } from "vue";
 import type { Ref } from "vue";
 import type { Map } from "maplibre-gl";
 
@@ -6,10 +6,13 @@ const PADDING_NAV = { top: 180, bottom: 0, left: 0, right: 0 };
 const PADDING_FREE = { top: 0, bottom: 0, left: 0, right: 0 };
 const NAV_ZOOM = 11;
 const NAV_PITCH = 38;
+const CAMERA_BEARING_FOLLOW_MS = 40;
+const MANUAL_INTERACTION_COOLDOWN_MS = 300000;
 
 export const useMapCamera = (map: Ref<Map | null>) => {
     const isCameraLocked = ref(false);
     const isNavigating = ref(false);
+    const isManualInteractionCooldownActive = ref(false);
 
     let targetCoords: [number, number] | null = null;
     let targetHeading: number = 0;
@@ -17,14 +20,16 @@ export const useMapCamera = (map: Ref<Map | null>) => {
     let previousCoords: [number, number] | null = null;
     let previousHeading: number = 0;
     let lastTargetUpdateTime: number = 0;
-
+    let cameraBearing: number | null = null;
+    let lastCameraBearingFrameTime: number | null = null;
     let currentTruckCoords: [number, number] | null = null;
     let currentTruckHeading: number = 0;
 
     let animationFrameId: number | null = null;
     let isEasing = false;
     let easeTimeout: ReturnType<typeof setTimeout> | null = null;
-
+    let manualInteractionCooldownTimer: ReturnType<typeof setTimeout> | null =
+        null;
     let markerEl: HTMLDivElement | null = null;
 
     const initMarker = (imgSrc: string) => {
@@ -59,7 +64,8 @@ export const useMapCamera = (map: Ref<Map | null>) => {
 
         if (map.value && targetCoords && previousCoords && currentTruckCoords) {
             const elapsed = now - lastTargetUpdateTime;
-            let progress = Math.min(elapsed / 120, 1);
+            const t = Math.min(elapsed / 150, 1);
+            const progress = 1 - (1 - t) ** 3;
 
             currentTruckCoords[0] =
                 previousCoords[0] +
@@ -70,15 +76,32 @@ export const useMapCamera = (map: Ref<Map | null>) => {
             currentTruckHeading =
                 previousHeading + (targetHeading - previousHeading) * progress;
 
+            if (cameraBearing === null) {
+                cameraBearing = currentTruckHeading;
+            } else {
+                const frameDeltaMs =
+                    lastCameraBearingFrameTime === null
+                        ? 16
+                        : Math.min(timestamp - lastCameraBearingFrameTime, 50);
+
+                let cameraBearingDiff = currentTruckHeading - cameraBearing;
+                while (cameraBearingDiff < -180) cameraBearingDiff += 360;
+                while (cameraBearingDiff > 180) cameraBearingDiff -= 360;
+
+                const cameraFollowProgress =
+                    1 - Math.exp(-frameDeltaMs / CAMERA_BEARING_FOLLOW_MS);
+
+                cameraBearing += cameraBearingDiff * cameraFollowProgress;
+            }
+
+            lastCameraBearingFrameTime = timestamp;
             const isTargetAtOrigin =
                 targetCoords[0] === 0 && targetCoords[1] === 0;
 
-            if (isCameraLocked.value && !isEasing && !isTargetAtOrigin) {
+            if (isCameraLocked.value && !isTargetAtOrigin) {
                 map.value.jumpTo({
                     center: [currentTruckCoords[0], currentTruckCoords[1]],
-                    bearing: isNavigating.value
-                        ? currentTruckHeading
-                        : map.value.getBearing(),
+                    bearing: cameraBearing ?? map.value.getBearing(),
                     zoom: isNavigating.value
                         ? Math.max(map.value.getZoom(), NAV_ZOOM)
                         : map.value.getZoom(),
@@ -116,6 +139,19 @@ export const useMapCamera = (map: Ref<Map | null>) => {
         }
     };
 
+    const refreshManualInteractionCooldown = () => {
+        isManualInteractionCooldownActive.value = true;
+
+        if (manualInteractionCooldownTimer) {
+            clearTimeout(manualInteractionCooldownTimer);
+        }
+
+        manualInteractionCooldownTimer = setTimeout(() => {
+            isManualInteractionCooldownActive.value = false;
+            manualInteractionCooldownTimer = null;
+        }, MANUAL_INTERACTION_COOLDOWN_MS);
+    };
+
     const breakLockEvents = [
         "pointerdown",
         "mousedown",
@@ -133,6 +169,7 @@ export const useMapCamera = (map: Ref<Map | null>) => {
         breakLockEvents.forEach((event) => {
             map.value!.on(event, () => {
                 if (isEasing) return;
+                refreshManualInteractionCooldown();
                 if (isCameraLocked.value) isCameraLocked.value = false;
             });
         });
@@ -178,7 +215,11 @@ export const useMapCamera = (map: Ref<Map | null>) => {
         isNavigating.value = true;
         isCameraLocked.value = true;
         targetCoords = coords;
-        targetHeading = heading;
+
+        let hDiff = heading - currentTruckHeading;
+        while (hDiff < -180) hDiff += 360;
+        while (hDiff > 180) hDiff -= 360;
+        targetHeading = currentTruckHeading + hDiff;
 
         isEasing = true;
         if (easeTimeout) clearTimeout(easeTimeout);
@@ -189,7 +230,6 @@ export const useMapCamera = (map: Ref<Map | null>) => {
 
         map.value.easeTo({
             center: coords,
-            bearing: isNavigating.value ? heading : 0,
             zoom: NAV_ZOOM,
             pitch: NAV_PITCH,
             duration: 300,
@@ -205,15 +245,21 @@ export const useMapCamera = (map: Ref<Map | null>) => {
     onUnmounted(() => {
         stopRenderLoop();
         if (easeTimeout) clearTimeout(easeTimeout);
+        if (manualInteractionCooldownTimer) {
+            clearTimeout(manualInteractionCooldownTimer);
+        }
         if (markerEl) markerEl.remove();
     });
 
     return {
         isCameraLocked,
         isNavigating,
+        isManualInteractionCooldownActive: readonly(
+            isManualInteractionCooldownActive,
+        ),
+        initCameraListeners,
         initMarker,
         updateMarkerImage,
-        initCameraListeners,
         followTruck,
         lockCamera,
         setNavigationActive,
